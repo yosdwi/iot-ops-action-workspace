@@ -1,9 +1,12 @@
-import { Loader2, Sparkles, X } from 'lucide-react'
+import { Clock3, Loader2, Sparkles, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { jakartaDate } from '../lib/time'
 import SearchableSelect from './SearchableSelect'
 import HybridLookup from './HybridLookup'
 import AssetComposer from './AssetComposer'
+
+const MINUTE = 60 * 1000
 
 export default function NewTicketModal({ masters, suggestions, operatorId, onClose, onCreated, notify }) {
   const [shiftId, setShiftId] = useState(() => localStorage.getItem('iot-ops-last-shift') || '')
@@ -13,6 +16,13 @@ export default function NewTicketModal({ masters, suggestions, operatorId, onClo
   const [assets, setAssets] = useState([])
   const [unresolved, setUnresolved] = useState([])
   const [busy, setBusy] = useState(false)
+  const [windowStart, setWindowStart] = useState('')
+  const [windowEnd, setWindowEnd] = useState('')
+  const [minGap, setMinGap] = useState(1)
+  const [maxGap, setMaxGap] = useState(5)
+  const [minDuration, setMinDuration] = useState(2)
+  const [maxDuration, setMaxDuration] = useState(10)
+  const [generatedTimes, setGeneratedTimes] = useState({})
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -30,15 +40,92 @@ export default function NewTicketModal({ masters, suggestions, operatorId, onClo
     if (!responderId && operatorId) setResponderId(operatorId)
   }, [responderId, operatorId])
 
+  useEffect(() => {
+    if (!shiftId || windowStart || windowEnd) return
+    setWindowFromShift(shiftId)
+  }, [shiftId, masters.shifts])
+
   function chooseShift(value) {
     setShiftId(value)
     if (value) localStorage.setItem('iot-ops-last-shift', value)
     else localStorage.removeItem('iot-ops-last-shift')
+    setGeneratedTimes({})
+    if (value) setWindowFromShift(value)
+  }
+
+  function setWindowFromShift(value) {
+    const shift = masters.shifts.find((item) => item.shift_id === value)
+    if (!shift?.start_time || !shift?.end_time) return
+    const date = jakartaDate()
+    const startValue = `${date}T${String(shift.start_time).slice(0, 5)}`
+    let startMs = parseJakartaInput(startValue)
+    let endMs = parseJakartaInput(`${date}T${String(shift.end_time).slice(0, 5)}`)
+    if (endMs <= startMs) endMs += 24 * 60 * MINUTE
+    setWindowStart(formatJakartaInput(startMs))
+    setWindowEnd(formatJakartaInput(endMs))
   }
 
   function applyPreset(preset) {
     setIssueTypeId(preset.issue_type_id)
     setDescription(preset.issue_description || '')
+  }
+
+  function handleAssetsChange(nextAssets) {
+    const currentIds = assets.map((item) => String(item.unit_id)).join('|')
+    const nextIds = nextAssets.map((item) => String(item.unit_id)).join('|')
+    if (currentIds !== nextIds) setGeneratedTimes({})
+    setAssets(nextAssets)
+  }
+
+  function updateTimeRule(setter, value) {
+    setter(value)
+    setGeneratedTimes({})
+  }
+
+  function generateTimes() {
+    if (!assets.length) return notify('Tambahkan asset dulu.', 'error')
+    const startMs = parseJakartaInput(windowStart)
+    const endMs = parseJakartaInput(windowEnd)
+    const gapMin = Number(minGap)
+    const gapMax = Number(maxGap)
+    const durationMin = Number(minDuration)
+    const durationMax = Number(maxDuration)
+
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return notify('Isi Window Start dan Window End dengan benar.', 'error')
+    if (![gapMin, gapMax, durationMin, durationMax].every((value) => Number.isFinite(value) && value >= 0)) return notify('Gap dan duration harus berupa angka positif.', 'error')
+    if (gapMin > gapMax) return notify('Min Gap tidak boleh lebih besar dari Max Gap.', 'error')
+    if (durationMin <= 0 || durationMin > durationMax) return notify('Min Duration harus lebih dari 0 dan tidak lebih besar dari Max Duration.', 'error')
+
+    const requiredMin = assets.length * durationMin + Math.max(0, assets.length - 1) * gapMin
+    const availableMinutes = Math.floor((endMs - startMs) / MINUTE)
+    if (requiredMin > availableMinutes) return notify(`Window terlalu sempit. Minimal butuh ${requiredMin} menit untuk ${assets.length} ticket.`, 'error')
+
+    let cursor = startMs
+    const slack = Math.max(0, availableMinutes - requiredMin)
+    cursor += randomInt(0, Math.min(gapMax, slack)) * MINUTE
+
+    const nextTimes = {}
+    for (let index = 0; index < assets.length; index += 1) {
+      const remainingRows = assets.length - index - 1
+      const minimumAfterDuration = remainingRows * durationMin + remainingRows * gapMin
+      const maxDurationAllowed = Math.floor((endMs - cursor) / MINUTE) - minimumAfterDuration
+      const duration = randomInt(durationMin, Math.min(durationMax, maxDurationAllowed))
+      const activityEnd = cursor + duration * MINUTE
+
+      nextTimes[assets[index].unit_id] = {
+        start: new Date(cursor).toISOString(),
+        end: new Date(activityEnd).toISOString(),
+      }
+
+      if (remainingRows > 0) {
+        const minimumAfterGap = remainingRows * durationMin + Math.max(0, remainingRows - 1) * gapMin
+        const maxGapAllowed = Math.floor((endMs - activityEnd) / MINUTE) - minimumAfterGap
+        const gap = randomInt(gapMin, Math.min(gapMax, maxGapAllowed))
+        cursor = activityEnd + gap * MINUTE
+      }
+    }
+
+    setGeneratedTimes(nextTimes)
   }
 
   async function submit(event) {
@@ -49,6 +136,9 @@ export default function NewTicketModal({ masters, suggestions, operatorId, onClo
     if (!issueTypeId) return notify('Pilih Issue Type.', 'error')
     if (!assets.length) return notify('Tambahkan minimal satu asset.', 'error')
     if (unresolved.length) return notify(`Masih ada ${unresolved.length} asset yang belum dikenali. Resolve atau remove dulu.`, 'error')
+
+    const generatedCount = Object.keys(generatedTimes).length
+    if (generatedCount && generatedCount !== assets.length) return notify('Asset berubah setelah generate time. Generate ulang dulu.', 'error')
 
     setBusy(true)
     const { data, error } = await supabase.rpc('create_ticket_batch_v3', {
@@ -63,6 +153,10 @@ export default function NewTicketModal({ masters, suggestions, operatorId, onClo
         unit_id: asset.unit_id,
         ...(asset.issue_type_id ? { issue_type_id: asset.issue_type_id } : {}),
         ...(asset.issue_description?.trim() ? { issue_description: asset.issue_description.trim() } : {}),
+        ...(generatedTimes[asset.unit_id] ? {
+          activity_start_at: generatedTimes[asset.unit_id].start,
+          activity_end_at: generatedTimes[asset.unit_id].end,
+        } : {}),
       })),
     })
     setBusy(false)
@@ -110,13 +204,36 @@ export default function NewTicketModal({ masters, suggestions, operatorId, onClo
 
             <AssetComposer
               assets={assets}
-              onChange={setAssets}
+              onChange={handleAssetsChange}
               unresolved={unresolved}
               onUnresolvedChange={setUnresolved}
               issueTypes={masters.issueTypes}
               descriptionSuggestions={suggestions.issueDescriptions}
               notify={notify}
             />
+
+            <section className="activity-time-section">
+              <div className="activity-time-head"><strong><Clock3 size={15} /> Activity Time</strong><button type="button" className="button secondary compact" onClick={generateTimes}>{Object.keys(generatedTimes).length ? 'Regenerate' : 'Generate Times'}</button></div>
+              <div className="time-rule-grid">
+                <label>Window Start<input type="datetime-local" value={windowStart} onChange={(event) => updateTimeRule(setWindowStart, event.target.value)} /></label>
+                <label>Window End<input type="datetime-local" value={windowEnd} onChange={(event) => updateTimeRule(setWindowEnd, event.target.value)} /></label>
+                <label>Min Gap (min)<input type="number" min="0" value={minGap} onChange={(event) => updateTimeRule(setMinGap, event.target.value)} /></label>
+                <label>Max Gap (min)<input type="number" min="0" value={maxGap} onChange={(event) => updateTimeRule(setMaxGap, event.target.value)} /></label>
+                <label>Min Duration (min)<input type="number" min="1" value={minDuration} onChange={(event) => updateTimeRule(setMinDuration, event.target.value)} /></label>
+                <label>Max Duration (min)<input type="number" min="1" value={maxDuration} onChange={(event) => updateTimeRule(setMaxDuration, event.target.value)} /></label>
+              </div>
+
+              {!!Object.keys(generatedTimes).length && (
+                <div className="generated-time-list">
+                  <div className="generated-time-row generated-time-header"><span>Asset</span><span>Start</span><span>End</span></div>
+                  {assets.map((asset) => {
+                    const time = generatedTimes[asset.unit_id]
+                    if (!time) return null
+                    return <div className="generated-time-row" key={asset.unit_id}><strong>{asset.unit_no}</strong><span>{formatJakartaDateTime(time.start)}</span><span>{formatJakartaDateTime(time.end)}</span></div>
+                  })}
+                </div>
+              )}
+            </section>
           </div>
 
           <footer className="composer-footer">
@@ -131,4 +248,32 @@ export default function NewTicketModal({ masters, suggestions, operatorId, onClo
       </section>
     </div>
   )
+}
+
+function parseJakartaInput(value) {
+  if (!value) return Number.NaN
+  return Date.parse(`${value}:00+07:00`)
+}
+
+function formatJakartaInput(ms) {
+  return new Date(ms + 7 * 60 * MINUTE).toISOString().slice(0, 16)
+}
+
+function formatJakartaDateTime(value) {
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value))
+}
+
+function randomInt(min, max) {
+  const safeMin = Math.ceil(Number(min))
+  const safeMax = Math.floor(Number(max))
+  if (safeMax <= safeMin) return safeMin
+  return Math.floor(Math.random() * (safeMax - safeMin + 1)) + safeMin
 }
