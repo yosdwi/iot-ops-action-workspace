@@ -17,7 +17,7 @@ export default function GroupedTickets({ tickets, groupBy, actionTypes, correcti
                 <article className={`ticket-card-row ${row._saving ? 'row-saving' : ''}`} key={row.ticket_id}>
                   <input type="checkbox" checked={selected.has(row.ticket_id)} onChange={() => onToggle(row.ticket_id)} />
                   <div className="ticket-card-main">
-                    <div className="ticket-card-title"><strong>{row.ticket_number}</strong><span className={`status-chip ${solved ? 'solved' : 'open'}`}>{solved ? 'Solved' : 'Open'}</span></div>
+                    <div className="ticket-card-title"><strong>{row.ticket_number}</strong><span className={`status-chip ${solved ? 'solved' : 'open'}`}>{solved ? 'Closed' : 'Open'}</span></div>
                     <div className="ticket-card-meta"><span>{row.ticket_date} · {displayTime(row.start_time)}</span><span>{row.site_code || '—'} · {row.unit_no || '—'}</span><span>{row.first_responder_name || '—'}</span></div>
                     <div className="ticket-card-issue"><strong>{row.issue_name || '—'}</strong><span>{row.issue_description || 'No description'}</span></div>
                   </div>
@@ -27,7 +27,7 @@ export default function GroupedTickets({ tickets, groupBy, actionTypes, correcti
                       <HybridLookup value={row.corrective_action_blocker || ''} onChange={(value) => onLocalPatch(row.ticket_id, { corrective_action_blocker: value })} onCommit={(value) => onSave({ ...row, corrective_action_blocker: value }, { corrective_action_blocker: value })} suggestions={correctiveSuggestions} placeholder="Corrective / blocker" />
                     </>}
                   </div>
-                  <div className="ticket-card-cta">{solved ? <button className="mini-button ghost" onClick={() => onReopen(row)}><RotateCcw size={14} /> Reopen</button> : <button className="mini-button solve" onClick={() => onSolve(row)}><Check size={14} /> Solve</button>}</div>
+                  <div className="ticket-card-cta">{solved ? <button className="mini-button ghost" onClick={() => onReopen(row)}><RotateCcw size={14} /> Reopen</button> : <button className="mini-button solve" onClick={() => onSolve(row)}><Check size={14} /> Close</button>}</div>
                 </article>
               )
             })}
@@ -46,7 +46,7 @@ function buildGroups(tickets, groupBy) {
     if (groupBy === 'site') { key = row.site_id || 'none'; label = row.site_code || 'No site' }
     else if (groupBy === 'responder') { key = row.first_responder_id || 'none'; label = row.first_responder_name || 'No responder' }
     else if (groupBy === 'issue') { key = row.issue_type_id || 'none'; label = row.issue_name || 'No issue type' }
-    else { key = row.status_id || 'none'; label = row.status_name || (row.is_completed ? 'Solved' : 'Open') }
+    else { key = row.status_id || 'none'; label = row.status_id === 'STATUS-SOLVED' || row.is_completed ? 'Closed' : (row.status_name || 'Open') }
     if (!map.has(key)) map.set(key, { key, label, rows: [] })
     map.get(key).rows.push(row)
   }
