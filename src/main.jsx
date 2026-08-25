@@ -7,6 +7,7 @@ import './stabilize.css'
 import './stability-patch.css'
 import './master-data.css'
 import './dropdown-scroll-patch.css'
+import './activity-bulk.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
