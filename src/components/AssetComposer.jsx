@@ -1,8 +1,9 @@
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Loader2, Search, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import SearchableSelect from './SearchableSelect'
 import HybridLookup from './HybridLookup'
+import PortalPopover, { announcePopoverOpen } from './PortalPopover'
 
 export default function AssetComposer({
   assets,
@@ -15,15 +16,19 @@ export default function AssetComposer({
 }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
+  const [resultsOpen, setResultsOpen] = useState(false)
   const [searching, setSearching] = useState(false)
   const [resolving, setResolving] = useState(false)
   const [review, setReview] = useState(false)
   const [activeUnresolved, setActiveUnresolved] = useState('')
+  const searchAnchorRef = useRef(null)
+  const resultsPopoverId = useId()
 
   useEffect(() => {
     const needle = query.trim()
     if (!needle) {
       setResults([])
+      setResultsOpen(false)
       setSearching(false)
       return
     }
@@ -35,15 +40,21 @@ export default function AssetComposer({
       setSearching(false)
       if (error) {
         setResults([])
+        setResultsOpen(false)
         return
       }
-      setResults(data || [])
+      const next = data || []
+      setResults(next)
+      if (next.length) {
+        announcePopoverOpen(resultsPopoverId)
+        setResultsOpen(true)
+      }
     }, 140)
     return () => {
       alive = false
       window.clearTimeout(timer)
     }
-  }, [query])
+  }, [query, resultsPopoverId])
 
   const selectedIds = useMemo(() => new Set(assets.map((x) => x.unit_id)), [assets])
 
@@ -51,6 +62,7 @@ export default function AssetComposer({
     if (!asset?.unit_id || selectedIds.has(asset.unit_id)) {
       setQuery('')
       setResults([])
+      setResultsOpen(false)
       return
     }
     onChange([...assets, {
@@ -69,6 +81,7 @@ export default function AssetComposer({
     }
     setQuery('')
     setResults([])
+    setResultsOpen(false)
   }
 
   function removeAsset(unitId) {
@@ -128,12 +141,19 @@ export default function AssetComposer({
     const entries = parseClipboard(text)
     if (!entries) return
     event.preventDefault()
+    setResultsOpen(false)
     resolveEntries(entries)
   }
 
   function findUnresolved(item) {
     setActiveUnresolved(item.query)
     setQuery(item.query)
+  }
+
+  function reopenResults() {
+    if (!query.trim() || !results.length) return
+    announcePopoverOpen(resultsPopoverId)
+    setResultsOpen(true)
   }
 
   return (
@@ -144,20 +164,21 @@ export default function AssetComposer({
       </div>
 
       <div className="asset-search-area">
-        <div className="asset-search-input">
+        <div ref={searchAnchorRef} className="asset-search-input">
           <Search size={17} />
           <input
             value={query}
+            onFocus={reopenResults}
             onChange={(e) => setQuery(e.target.value)}
             onPaste={handlePaste}
             placeholder="Search DT3714, 8186, 192.168.44.83 — or paste a list"
           />
           {(searching || resolving) && <Loader2 size={16} className="spin" />}
-          {query && !searching && <button type="button" onClick={() => { setQuery(''); setResults([]); setActiveUnresolved('') }}><X size={15} /></button>}
+          {query && !searching && <button type="button" onClick={() => { setQuery(''); setResults([]); setResultsOpen(false); setActiveUnresolved('') }}><X size={15} /></button>}
         </div>
         <div className="asset-paste-note">Paste newline/comma lists. Spreadsheet paste also supports: <code>identifier[TAB]description</code>.</div>
 
-        {!!results.length && query.trim() && (
+        <PortalPopover id={resultsPopoverId} anchorRef={searchAnchorRef} open={resultsOpen && !!results.length && !!query.trim()} onClose={() => setResultsOpen(false)} minWidth={420} className="asset-results-portal">
           <div className="asset-results">
             {results.map((item) => (
               <button type="button" key={item.unit_id} onClick={() => addAsset(item)} disabled={selectedIds.has(item.unit_id)}>
@@ -170,7 +191,7 @@ export default function AssetComposer({
               </button>
             ))}
           </div>
-        )}
+        </PortalPopover>
       </div>
 
       {!!unresolved.length && (

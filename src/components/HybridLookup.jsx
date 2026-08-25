@@ -1,18 +1,12 @@
 import { Search } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
+import PortalPopover, { announcePopoverOpen } from './PortalPopover'
 
 export default function HybridLookup({ value = '', onChange, suggestions = [], placeholder = 'Type or select…', disabled = false, onCommit, className = '' }) {
   const [open, setOpen] = useState(false)
-  const rootRef = useRef(null)
+  const anchorRef = useRef(null)
   const focusValueRef = useRef(value || '')
-
-  useEffect(() => {
-    function close(event) {
-      if (!rootRef.current?.contains(event.target)) setOpen(false)
-    }
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
-  }, [])
+  const popoverId = useId()
 
   const filtered = useMemo(() => {
     const needle = String(value || '').trim().toLowerCase()
@@ -27,6 +21,11 @@ export default function HybridLookup({ value = '', onChange, suggestions = [], p
     onCommit?.(next || '')
   }
 
+  function openPopover() {
+    announcePopoverOpen(popoverId)
+    setOpen(true)
+  }
+
   function choose(next) {
     onChange(next)
     commit(next)
@@ -34,9 +33,11 @@ export default function HybridLookup({ value = '', onChange, suggestions = [], p
   }
 
   return (
-    <div ref={rootRef} className={`hybrid-lookup ${className}`}>
-      <div className="hybrid-input-wrap"><Search size={13} /><input value={value || ''} disabled={disabled} placeholder={placeholder} onFocus={() => { focusValueRef.current = value || ''; setOpen(true) }} onChange={(e) => { onChange(e.target.value); setOpen(true) }} onBlur={() => commit(value || '')} /></div>
-      {open && !disabled && filtered.length > 0 && <div className="hybrid-popover">{filtered.map((item) => <button type="button" key={item} onMouseDown={(e) => e.preventDefault()} onClick={() => choose(item)}>{item}</button>)}</div>}
+    <div ref={anchorRef} className={`hybrid-lookup ${className}`}>
+      <div className="hybrid-input-wrap"><Search size={13} /><input value={value || ''} disabled={disabled} placeholder={placeholder} onFocus={() => { focusValueRef.current = value || ''; openPopover() }} onChange={(e) => { onChange(e.target.value); openPopover() }} onBlur={() => commit(value || '')} /></div>
+      <PortalPopover id={popoverId} anchorRef={anchorRef} open={open && !disabled && filtered.length > 0} onClose={() => setOpen(false)} minWidth={280} className="hybrid-portal">
+        <div className="hybrid-popover">{filtered.map((item) => <button type="button" key={item} onMouseDown={(e) => e.preventDefault()} onClick={() => choose(item)}>{item}</button>)}</div>
+      </PortalPopover>
     </div>
   )
 }

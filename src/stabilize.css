@@ -1,0 +1,98 @@
+/* Stabilization pass: containment, portal overlays, modal sizing, table viewport and pagination. */
+html,body,#root{max-width:100%;overflow-x:hidden}
+.app-shell{width:100%;max-width:100%;overflow-x:hidden}
+.workspace{box-sizing:border-box;max-width:none!important;width:calc(100vw - 228px)!important;min-width:0!important;overflow-x:hidden}
+
+/* One global overlay layer. Popovers are portaled to body so table/modal overflow cannot clip them. */
+.portal-popover{position:fixed;z-index:2000;max-width:calc(100vw - 24px);min-width:0;overflow:visible}
+.portal-popover .lookup-popover,.portal-popover .hybrid-popover,.portal-popover .asset-results{position:static!important;inset:auto!important;width:100%!important;min-width:0!important;max-width:none!important;margin:0!important}
+.portal-popover .lookup-popover{display:flex;flex-direction:column;max-height:100%;overflow:hidden}
+.portal-popover .lookup-search{flex:0 0 auto}
+.portal-popover .lookup-list{min-height:0;max-height:none!important;overflow:auto}
+.portal-popover .hybrid-popover{max-height:100%!important;overflow:auto!important}
+.portal-popover .asset-results{max-height:100%!important;overflow:auto!important;left:auto!important;right:auto!important;top:auto!important}
+.lookup,.hybrid-lookup,.asset-search-input{min-width:0}
+.lookup-trigger,.hybrid-input-wrap{max-width:100%}
+.lookup-trigger>span{min-width:0}
+
+/* Quick Ticket Composer: large desktop workspace, zero horizontal scroll. */
+.modal-backdrop{padding:16px!important;overflow:hidden!important}
+.composer-modal{width:min(1240px,calc(100vw - 32px))!important;height:min(900px,calc(100vh - 32px));max-height:calc(100vh - 32px)!important;max-width:none!important;overflow:hidden!important;display:flex!important;flex-direction:column!important}
+.composer-modal,.composer-modal form,.composer-body,.composer-context,.composer-context-grid,.asset-composer,.asset-search-area,.selected-assets,.asset-review-table,.composer-footer{min-width:0;max-width:100%}
+.composer-header{flex:0 0 auto;padding:18px 22px!important}
+.composer-modal form{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.composer-body{flex:1;min-height:0;padding:18px 22px!important;overflow-y:auto!important;overflow-x:hidden!important;display:grid;align-content:start;gap:16px}
+.composer-context-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important}
+.composer-context-grid>*{min-width:0}
+.composer-description{grid-column:1/-1!important;min-width:0}
+.composer-description .hybrid-lookup{width:100%}
+.composer-presets{min-width:0;align-items:flex-start!important}
+.preset-list{flex:1;min-width:0;display:grid!important;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:6px!important;overflow:visible!important;padding-bottom:0!important}
+.preset-list button{min-width:0!important;max-width:none!important;width:100%}
+
+.asset-composer{overflow:hidden!important;width:100%}
+.asset-composer-head>div:first-child{min-width:0}
+.asset-composer-head span{white-space:normal;overflow-wrap:anywhere}
+.asset-search-area{overflow:visible}
+.asset-search-input{width:100%}
+.asset-paste-note{overflow-wrap:anywhere}
+.selected-assets{grid-template-columns:repeat(2,minmax(0,1fr))!important;width:100%}
+.selected-asset{min-width:0!important;grid-template-columns:18px minmax(0,1fr) auto 25px!important}
+.selected-asset-copy{min-width:0}
+.selected-asset-copy strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.selected-asset-copy span{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere;line-height:1.35}
+.asset-review-table{overflow:visible!important;width:auto!important}
+.asset-review-head,.asset-review-row{grid-template-columns:minmax(110px,.55fr) minmax(0,1fr) minmax(0,1.25fr)!important;width:100%;min-width:0}
+.asset-review-head>*,.asset-review-row>*{min-width:0}
+.review-lookup,.review-description{min-width:0;width:100%}
+.unresolved-box,.unresolved-list,.unresolved-list>div{min-width:0;max-width:100%}
+.unresolved-list>div>span{min-width:0;overflow-wrap:anywhere}
+.composer-footer{flex:0 0 auto;padding:12px 22px!important;gap:16px;overflow:hidden}
+.composer-footer>div:first-child{min-width:0}
+.composer-footer>div:first-child span{white-space:normal;overflow-wrap:anywhere}
+
+/* Stable table viewport: toolbar top, scrollable table center, pagination fixed at card bottom. */
+.content-card{display:flex!important;flex-direction:column!important;min-height:520px;overflow:visible!important}
+.content-heading-v2{flex:0 0 auto}
+.table-panel{display:flex;flex-direction:column;flex:1;min-height:0;width:100%;overflow:visible}
+.table-panel .table-shell{flex:1;min-height:0;width:100%;overflow:auto!important;overscroll-behavior:contain}
+.ticket-table th{z-index:3}
+.table-pagination{flex:0 0 auto;min-height:48px;border-top:1px solid var(--border);background:#fff;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px;padding:8px 14px;border-radius:0 0 14px 14px;color:#64748b;font-size:11px}
+.pagination-range{justify-self:start;font-weight:600;color:#64748b}
+.pagination-controls{display:flex;align-items:center;gap:8px;justify-self:center}
+.pagination-controls button{width:30px;height:30px;border:1px solid var(--border);background:#fff;border-radius:8px;color:#475569;display:grid;place-items:center}
+.pagination-controls button:hover:not(:disabled){border-color:#86efc4;background:#f0fdf8;color:#007f56}
+.pagination-controls span{min-width:86px;text-align:center;font-size:10px;font-weight:650}
+.page-size-control{justify-self:end;display:flex;align-items:center;gap:7px;font-size:10px;color:#94a3b8}
+.page-size-control select{height:30px;border:1px solid var(--border);background:#fff;border-radius:8px;padding:0 7px;color:#475569;outline:0}
+.result-footer{display:none!important}
+.grouped-view{flex:1;min-height:0;overflow:auto}
+
+@media(max-width:1100px){
+  .workspace{width:calc(100vw - 74px)!important}
+  .composer-modal{width:calc(100vw - 24px)!important;height:calc(100vh - 24px)}
+  .composer-context-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .composer-description{grid-column:1/-1!important}
+  .selected-assets{grid-template-columns:1fr!important}
+  .asset-review-head,.asset-review-row{grid-template-columns:minmax(100px,.5fr) minmax(0,1fr) minmax(0,1fr)!important}
+}
+
+@media(max-width:760px){
+  .workspace{width:100vw!important;overflow-x:hidden}
+  .modal-backdrop{padding:8px!important}
+  .composer-modal{width:calc(100vw - 16px)!important;height:calc(100vh - 16px);max-height:calc(100vh - 16px)!important;border-radius:12px!important}
+  .composer-header{padding:14px 15px!important}
+  .composer-body{padding:12px 14px!important}
+  .composer-context-grid{grid-template-columns:1fr!important}
+  .composer-description{grid-column:auto!important}
+  .composer-presets{display:grid!important;gap:7px!important}
+  .preset-list{grid-template-columns:1fr 1fr!important}
+  .asset-review-head{display:none!important}
+  .asset-review-row{grid-template-columns:1fr!important;gap:7px!important;padding:10px!important}
+  .composer-footer{padding:10px 14px!important;display:grid!important;grid-template-columns:1fr!important}
+  .composer-footer-actions{width:100%}
+  .composer-footer-actions .button{flex:1}
+  .content-card{min-height:500px}
+  .table-pagination{grid-template-columns:1fr auto;grid-template-areas:'range size' 'controls controls';gap:7px}
+  .pagination-range{grid-area:range}.page-size-control{grid-area:size}.pagination-controls{grid-area:controls;justify-self:center}
+}

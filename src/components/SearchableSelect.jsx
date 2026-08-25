@@ -1,5 +1,6 @@
 import { Check, ChevronDown, Search, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import PortalPopover, { announcePopoverOpen } from './PortalPopover'
 
 export default function SearchableSelect({
   value,
@@ -15,16 +16,9 @@ export default function SearchableSelect({
 }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const rootRef = useRef(null)
+  const anchorRef = useRef(null)
   const inputRef = useRef(null)
-
-  useEffect(() => {
-    function close(event) {
-      if (!rootRef.current?.contains(event.target)) setOpen(false)
-    }
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
-  }, [])
+  const popoverId = useId()
 
   useEffect(() => {
     if (open) window.setTimeout(() => inputRef.current?.focus(), 0)
@@ -35,8 +29,13 @@ export default function SearchableSelect({
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase()
     if (!needle) return options.slice(0, 120)
-    return options.filter((item) => getLabel(item).toLowerCase().includes(needle)).slice(0, 120)
+    return options.filter((item) => String(getLabel(item) || '').toLowerCase().includes(needle)).slice(0, 120)
   }, [options, search, getLabel])
+
+  function setPopoverOpen(next) {
+    if (next) announcePopoverOpen(popoverId)
+    setOpen(next)
+  }
 
   function choose(nextValue) {
     onChange(nextValue)
@@ -44,12 +43,12 @@ export default function SearchableSelect({
   }
 
   return (
-    <div ref={rootRef} className={`lookup ${className}`}>
-      <button type="button" className={`lookup-trigger ${open ? 'active' : ''}`} disabled={disabled} onClick={() => setOpen((x) => !x)}>
+    <div ref={anchorRef} className={`lookup ${className}`}>
+      <button type="button" className={`lookup-trigger ${open ? 'active' : ''}`} disabled={disabled} onClick={() => setPopoverOpen(!open)}>
         <span className={selected ? '' : 'lookup-placeholder'}>{selected ? getLabel(selected) : placeholder}</span>
         <ChevronDown size={14} />
       </button>
-      {open && (
+      <PortalPopover id={popoverId} anchorRef={anchorRef} open={open} onClose={() => setOpen(false)} minWidth={240} className="lookup-portal">
         <div className="lookup-popover">
           <div className="lookup-search"><Search size={14} /><input ref={inputRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder={searchPlaceholder} /></div>
           <div className="lookup-list">
@@ -62,7 +61,7 @@ export default function SearchableSelect({
             {!filtered.length && <div className="lookup-empty">No matching options</div>}
           </div>
         </div>
-      )}
+      </PortalPopover>
     </div>
   )
 }
