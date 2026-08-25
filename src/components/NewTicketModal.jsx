@@ -95,9 +95,8 @@ export default function NewTicketModal({ masters, suggestions, operatorId, onClo
       <section className="modal-card composer-modal">
         <header className="modal-header composer-header">
           <div>
-            <div className="eyebrow">Bulk-first entry</div>
             <h2>Quick Ticket Composer</h2>
-            <div className="modal-live-time">{jakartaDateTimeLabel(now)} WIB · date/time captured automatically on create</div>
+            <div className="modal-live-time">{jakartaDateTimeLabel(now)} WIB</div>
           </div>
           <button className="icon-button" onClick={onClose}><X size={19} /></button>
         </header>
@@ -105,12 +104,12 @@ export default function NewTicketModal({ masters, suggestions, operatorId, onClo
         <form onSubmit={submit}>
           <div className="composer-body">
             <section className="composer-context">
-              <div className="composer-section-title"><div><strong>Batch context</strong><span>Set once. Override individual rows only when needed.</span></div></div>
+              <div className="composer-section-title"><strong>Batch context</strong></div>
               <div className="composer-context-grid">
                 <label>Shift<SearchableSelect value={shiftId} onChange={chooseShift} options={masters.shifts} getValue={(x) => x.shift_id} getLabel={(x) => x.shift_name} placeholder="Search shift" clearable={false} /></label>
                 <label>First Responder<SearchableSelect value={responderId} onChange={setResponderId} options={masters.people} getValue={(x) => x.person_id} getLabel={(x) => x.display_name} placeholder="Search responder" clearable={false} /></label>
                 <label>Issue Type<SearchableSelect value={issueTypeId} onChange={setIssueTypeId} options={masters.issueTypes} getValue={(x) => x.issue_type_id} getLabel={(x) => x.issue_name} placeholder="Search issue type" clearable={false} /></label>
-                <label className="composer-description">Issue Description<HybridLookup value={description} onChange={setDescription} suggestions={suggestions.issueDescriptions} placeholder="Search historical description or type a new one…" /></label>
+                <label className="composer-description">Issue Description<HybridLookup value={description} onChange={setDescription} suggestions={suggestions.issueDescriptions} placeholder="Search description or type a new one…" /></label>
               </div>
 
               {!!presets.length && (
@@ -139,7 +138,6 @@ export default function NewTicketModal({ masters, suggestions, operatorId, onClo
           </div>
 
           <footer className="composer-footer">
-            <div><strong>{assets.length} ticket{assets.length === 1 ? '' : 's'} ready</strong><span>Site follows the resolved asset automatically. One asset = one ticket.</span></div>
             <div className="composer-footer-actions">
               <button type="button" className="button secondary" onClick={onClose}>Cancel</button>
               <button className="button primary composer-create" disabled={busy || !assets.length || !!unresolved.length}>
