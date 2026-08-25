@@ -1,0 +1,103 @@
+/* Small stabilization patch: full-height workspace, bounded dropdowns, consistent hybrid search. */
+
+/* Desktop workspace should end at the viewport bottom, aligned with the fixed sidebar. */
+@media (min-width: 761px) {
+  html, body, #root, .app-shell { height: 100%; }
+  body { overflow: hidden; }
+  .workspace {
+    height: 100vh !important;
+    min-height: 100vh !important;
+    padding-bottom: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  .topbar, .notice, .stat-grid, .controls-card { flex: 0 0 auto; }
+  .content-card {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    margin-bottom: 0 !important;
+    border-radius: 14px 14px 0 0 !important;
+  }
+  .table-panel, .grouped-view, .table-loading, .empty-state { flex: 1 1 auto; min-height: 0; }
+}
+
+/* Every portal dropdown has the same viewport-safe containment. */
+.portal-popover {
+  overflow: hidden !important;
+  border-radius: 11px;
+}
+.portal-popover .lookup-popover,
+.portal-popover .hybrid-popover,
+.portal-popover .asset-results {
+  max-height: 100% !important;
+  overflow: hidden !important;
+}
+.portal-popover .lookup-popover,
+.portal-popover .hybrid-popover {
+  display: flex !important;
+  flex-direction: column !important;
+}
+.lookup-search,
+.hybrid-search {
+  flex: 0 0 40px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border-bottom: 1px solid #eef2f7;
+  color: #94a3b8;
+  background: #fff;
+}
+.lookup-search input,
+.hybrid-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #334155;
+  font-size: 12px;
+}
+.lookup-list,
+.hybrid-list,
+.asset-results {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.lookup-list,
+.hybrid-list { padding: 5px; }
+.hybrid-popover { padding: 0 !important; }
+.hybrid-list button {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  border: 0;
+  background: #fff;
+  text-align: left;
+  border-radius: 7px;
+  padding: 8px 9px;
+  font-size: 11px;
+  color: #475569;
+}
+.hybrid-list button:hover { background: #f0fdf8; color: #007f56; }
+.hybrid-empty { padding: 14px 10px; text-align: center; color: #94a3b8; font-size: 11px; }
+
+/* Old visual names are mapped to the new Open / Closed language. */
+.stat-grid .stat-card:nth-child(3) > span { font-size: 0; }
+.stat-grid .stat-card:nth-child(3) > span::after { content: 'Closed'; font-size: 11px; }
+.solve-bulk { font-size: 0; }
+.solve-bulk::after { content: 'Close selected'; font-size: 13px; }
+
+/* Composer copy is intentionally compact; footer only needs the actions. */
+.composer-footer { justify-content: flex-end !important; }
+.composer-footer > .composer-footer-actions { margin-left: auto; }
+
+@media (max-width: 760px) {
+  body { overflow: auto; }
+  .workspace { height: auto !important; min-height: 100vh !important; padding-bottom: 16px !important; overflow: visible !important; }
+  .content-card { border-radius: 12px !important; }
+}
