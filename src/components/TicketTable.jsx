@@ -55,10 +55,11 @@ export default function TicketTable({
             {pageRows.map((row) => {
               const solved = row.status_id === 'STATUS-SOLVED' || row.is_completed
               const unitsForSite = masters.units.filter((item) => !row.site_id || item.site_id === row.site_id).map((item) => item.unit_no)
+              const activityEnd = row.activity_end_at ? displayJakartaClock(row.activity_end_at) : ''
               return (
                 <tr key={row.ticket_id} className={row._saving ? 'row-saving' : ''}>
                   <td data-label="Select" className="checkbox-cell"><input type="checkbox" checked={selected.has(row.ticket_id)} onChange={() => onToggle(row.ticket_id)} /></td>
-                  <td data-label="Ticket"><div className="strong">{row.ticket_date} · {displayTime(row.start_time)}</div><div className="mono muted">{row.ticket_number}</div></td>
+                  <td data-label="Ticket"><div className="strong">{row.ticket_date} · {displayTime(row.start_time)}{activityEnd ? ` → ${activityEnd}` : ''}</div><div className="mono muted">{row.ticket_number}</div></td>
                   <td data-label="Unit">
                     {solved ? <span className="unit-chip">{row.unit_no || '—'}</span> : <HybridLookup value={row.unit_no || ''} suggestions={unitsForSite} placeholder="Unit" onChange={(value) => onLocalPatch(row.ticket_id, { unit_no: value })} onCommit={(value) => onSaveContext({ ...row, unit_no: value }, { unit_no: value })} className="table-hybrid unit-lookup" />}
                   </td>
@@ -105,4 +106,13 @@ export default function TicketTable({
       </footer>
     </div>
   )
+}
+
+function displayJakartaClock(value) {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value))
 }
