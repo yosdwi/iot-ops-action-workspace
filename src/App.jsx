@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, CalendarDays, Check, Database, LayoutDashboard, ListChecks, Loader2, LogOut, Plus, RefreshCw, Rows3, Search, Settings2, Sparkles, Table2, Users } from 'lucide-react'
+import { Activity, CalendarDays, Database, LayoutDashboard, ListChecks, Loader2, LogOut, Plus, RefreshCw, Rows3, Search, Settings2, Sparkles, Table2, Users } from 'lucide-react'
 import LoginScreen from './components/LoginScreen'
 import NewTicketModal from './components/NewTicketModal'
 import TicketTable from './components/TicketTable'
 import GroupedTickets from './components/GroupedTickets'
 import SearchableSelect from './components/SearchableSelect'
 import MasterData from './components/MasterData'
+import BulkActionBar from './components/BulkActionBar'
 import { supabase } from './lib/supabase'
 import { jakartaDate } from './lib/time'
 
@@ -68,6 +69,8 @@ function Workspace({ session }) {
   const [toast, setToast] = useState(null)
   const [viewMode, setViewMode] = useState('table')
   const [groupBy, setGroupBy] = useState('status')
+  const [bulkActionTypeId, setBulkActionTypeId] = useState('')
+  const [bulkCorrectiveAction, setBulkCorrectiveAction] = useState('')
 
   useEffect(() => { loadMasters() }, [])
 
@@ -227,14 +230,20 @@ function Workspace({ session }) {
     setTickets((rows) => rows.map((item) => item.ticket_id === row.ticket_id ? { ...data, status_name: 'Open' } : item))
   }
 
-  async function bulkApply(actionType = null, closeTickets = false) {
+  async function bulkApply({ actionTypeId = '', correctiveAction = '', closeTickets = false } = {}) {
     const ids = [...selected]
     if (!ids.length) return notify('Pilih ticket dulu.', 'error')
     if (!operatorId) return notify('Pilih operator IoT Ops dulu.', 'error')
+
+    const corrective = correctiveAction.trim()
+    if (!closeTickets && !actionTypeId && !corrective) return notify('Pilih Action Type atau isi Corrective Action.', 'error')
+
+    const actionType = masters.actionTypes.find((item) => item.action_type_id === actionTypeId)
     const snapshot = new Map(tickets.filter((x) => selected.has(x.ticket_id)).map((x) => [x.ticket_id, x]))
     setTickets((rows) => rows.map((row) => selected.has(row.ticket_id) ? {
       ...row,
       ...(actionType ? { action_type_id: actionType.action_type_id, action_name: actionType.action_name } : {}),
+      ...(corrective ? { corrective_action_blocker: corrective } : {}),
       ...(closeTickets ? { status_id: 'STATUS-SOLVED', status_name: 'Closed', is_completed: true, closed_at: new Date().toISOString() } : {}),
       _saving: true,
     } : row))
@@ -242,8 +251,8 @@ function Workspace({ session }) {
     const { data, error } = await supabase.rpc('bulk_apply_ticket_action', {
       p_ticket_ids: ids,
       p_operator_id: operatorId,
-      p_action_type_id: actionType?.action_type_id || null,
-      p_corrective_action: null,
+      p_action_type_id: actionTypeId || null,
+      p_corrective_action: corrective || null,
       p_solve: closeTickets,
     })
 
@@ -251,9 +260,12 @@ function Workspace({ session }) {
       setTickets((rows) => rows.map((row) => snapshot.has(row.ticket_id) ? snapshot.get(row.ticket_id) : row))
       return notify(error.message, 'error')
     }
+
     setTickets((rows) => rows.map((row) => selected.has(row.ticket_id) ? { ...row, _saving: false } : row))
     notify(`${data?.updated_count || ids.length} ticket updated.`, 'success')
     setSelected(new Set())
+    setBulkActionTypeId('')
+    setBulkCorrectiveAction('')
   }
 
   function addCreated(createdRows) {
@@ -282,10 +294,6 @@ function Workspace({ session }) {
     open: tickets.filter((x) => x.status_id === 'STATUS-OPEN').length,
     closed: tickets.filter((x) => x.status_id === 'STATUS-SOLVED').length,
   }), [tickets])
-
-  const quickActions = ['FU IT Site', 'Pengecekan Data', 'Validasi ulang', 'Requested Action']
-    .map((name) => masters.actionTypes.find((item) => item.action_name?.toLowerCase() === name.toLowerCase()))
-    .filter(Boolean)
 
   const accountName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Google user'
   const avatarUrl = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture
@@ -343,12 +351,17 @@ function Workspace({ session }) {
                 <SearchableSelect value={responderFilter} onChange={setResponderFilter} options={masters.people} getValue={(x) => x.person_id} getLabel={(x) => x.display_name} placeholder="All responders" className="filter-lookup wide-filter" />
               </div>
 
-              <div className="quick-row">
-                <span className="quick-label">Quick action</span>
-                {quickActions.map((action) => <button key={action.action_type_id} className="quick-button" onClick={() => bulkApply(action, false)} disabled={!selected.size}>{action.action_name}</button>)}
-                <div className="quick-spacer" />
-                <button className="button solve-bulk compact" onClick={() => bulkApply(null, true)} disabled={!selected.size}><Check size={15} /> Close selected</button>
-              </div>
+              <BulkActionBar
+                selectedCount={selected.size}
+                actionTypes={masters.actionTypes}
+                correctiveSuggestions={suggestions.correctiveActions}
+                actionTypeId={bulkActionTypeId}
+                onActionTypeChange={setBulkActionTypeId}
+                correctiveAction={bulkCorrectiveAction}
+                onCorrectiveChange={setBulkCorrectiveAction}
+                onApply={() => bulkApply({ actionTypeId: bulkActionTypeId, correctiveAction: bulkCorrectiveAction })}
+                onClose={() => bulkApply({ actionTypeId: bulkActionTypeId, correctiveAction: bulkCorrectiveAction, closeTickets: true })}
+              />
             </section>
 
             <section className="content-card">
