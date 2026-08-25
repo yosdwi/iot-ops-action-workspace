@@ -83,9 +83,9 @@ export default function TicketTable({
                   <td data-label="Corrective Action">
                     {solved ? <div className="description-cell" title={row.corrective_action_blocker || ''}>{row.corrective_action_blocker || '—'}</div> : <HybridLookup value={row.corrective_action_blocker || ''} suggestions={suggestions.correctiveActions} placeholder="Corrective / blocker" onChange={(value) => onLocalPatch(row.ticket_id, { corrective_action_blocker: value })} onCommit={(value) => onSaveAction({ ...row, corrective_action_blocker: value }, { corrective_action_blocker: value })} className="table-hybrid corrective-lookup" />}
                   </td>
-                  <td data-label="Status"><span className={`status-chip ${solved ? 'solved' : 'open'}`}>{solved ? 'Solved' : 'Open'}</span>{row._saving && <div className="saving-label">Saving…</div>}</td>
+                  <td data-label="Status"><span className={`status-chip ${solved ? 'solved' : 'open'}`}>{solved ? 'Closed' : 'Open'}</span>{row._saving && <div className="saving-label">Saving…</div>}</td>
                   <td data-label="Action" className="row-action-cell">
-                    {solved ? <button className="mini-button ghost" onClick={() => onReopen(row)} disabled={row._saving}><RotateCcw size={14} /> Reopen</button> : <button className="mini-button solve" onClick={() => onSolve(row)} disabled={row._saving}><Check size={14} /> Solve</button>}
+                    {solved ? <button className="mini-button ghost" onClick={() => onReopen(row)} disabled={row._saving}><RotateCcw size={14} /> Reopen</button> : <button className="mini-button solve" onClick={() => onSolve(row)} disabled={row._saving}><Check size={14} /> Close</button>}
                   </td>
                 </tr>
               )
