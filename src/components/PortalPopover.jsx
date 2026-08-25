@@ -7,7 +7,7 @@ export function announcePopoverOpen(id) {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: id }))
 }
 
-export default function PortalPopover({ id, anchorRef, open, onClose, children, minWidth = 240, className = '' }) {
+export default function PortalPopover({ id, anchorRef, open, onClose, children, minWidth = 240, maxHeight = 320, className = '' }) {
   const layerRef = useRef(null)
   const [style, setStyle] = useState({ visibility: 'hidden' })
 
@@ -25,22 +25,24 @@ export default function PortalPopover({ id, anchorRef, open, onClose, children, 
       const viewportHeight = window.innerHeight
       const margin = 12
       const width = Math.min(Math.max(rect.width, minWidth), Math.max(220, viewportWidth - margin * 2))
-      const measuredHeight = Math.max(80, layer.offsetHeight || 280)
-      const spaceBelow = viewportHeight - rect.bottom - margin
-      const spaceAbove = rect.top - margin
+      const spaceBelow = Math.max(0, viewportHeight - rect.bottom - margin)
+      const spaceAbove = Math.max(0, rect.top - margin)
       const openAbove = spaceBelow < 220 && spaceAbove > spaceBelow
-      const availableHeight = Math.max(140, openAbove ? spaceAbove - 6 : spaceBelow - 6)
-      const left = Math.min(Math.max(margin, rect.left), Math.max(margin, viewportWidth - width - margin))
+      const sideSpace = openAbove ? spaceAbove : spaceBelow
+      const availableHeight = Math.max(48, Math.min(maxHeight, sideSpace - 6))
+      const measuredHeight = Math.min(Math.max(48, layer.scrollHeight || layer.offsetHeight || 280), maxHeight)
       const visibleHeight = Math.min(measuredHeight, availableHeight)
+      const left = Math.min(Math.max(margin, rect.left), Math.max(margin, viewportWidth - width - margin))
       const top = openAbove
         ? Math.max(margin, rect.top - visibleHeight - 6)
-        : Math.min(viewportHeight - margin - Math.min(measuredHeight, availableHeight), rect.bottom + 6)
+        : Math.min(viewportHeight - margin - visibleHeight, rect.bottom + 6)
 
       setStyle({
         position: 'fixed',
         left: `${left}px`,
         top: `${Math.max(margin, top)}px`,
         width: `${width}px`,
+        height: 'auto',
         maxHeight: `${availableHeight}px`,
         visibility: 'visible',
       })
@@ -55,7 +57,7 @@ export default function PortalPopover({ id, anchorRef, open, onClose, children, 
       window.removeEventListener('resize', updatePosition)
       window.removeEventListener('scroll', updatePosition, true)
     }
-  }, [open, anchorRef, minWidth])
+  }, [open, anchorRef, minWidth, maxHeight])
 
   useEffect(() => {
     if (!open) return undefined
