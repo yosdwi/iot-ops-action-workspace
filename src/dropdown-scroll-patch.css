@@ -1,0 +1,6 @@
+/* Standard dropdown containment: fixed search header, scrollable option list. */
+.portal-popover.lookup-portal,.portal-popover.hybrid-portal{max-height:320px!important;overflow:hidden!important}
+.portal-popover .lookup-popover,.portal-popover .hybrid-popover{display:flex!important;flex-direction:column!important;height:auto!important;max-height:320px!important;overflow:hidden!important}
+.portal-popover .lookup-search,.portal-popover .hybrid-search{flex:0 0 40px!important;min-height:40px!important;position:relative;background:#fff;z-index:1}
+.portal-popover .lookup-list,.portal-popover .hybrid-list{flex:1 1 auto!important;min-height:0!important;max-height:272px!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-gutter:stable}
+.portal-popover.asset-results-portal{max-height:320px!important;overflow:hidden!important}.portal-popover .asset-results{max-height:320px!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-gutter:stable}

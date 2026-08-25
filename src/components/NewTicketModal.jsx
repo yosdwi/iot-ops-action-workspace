@@ -1,7 +1,6 @@
 import { Loader2, Sparkles, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { jakartaDateTimeLabel } from '../lib/time'
 import SearchableSelect from './SearchableSelect'
 import HybridLookup from './HybridLookup'
 import AssetComposer from './AssetComposer'
@@ -13,14 +12,7 @@ export default function NewTicketModal({ masters, suggestions, operatorId, onClo
   const [description, setDescription] = useState('')
   const [assets, setAssets] = useState([])
   const [unresolved, setUnresolved] = useState([])
-  const [presets, setPresets] = useState([])
   const [busy, setBusy] = useState(false)
-  const [now, setNow] = useState(new Date())
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -37,14 +29,6 @@ export default function NewTicketModal({ masters, suggestions, operatorId, onClo
   useEffect(() => {
     if (!responderId && operatorId) setResponderId(operatorId)
   }, [responderId, operatorId])
-
-  useEffect(() => {
-    let alive = true
-    supabase.rpc('get_ticket_presets', { p_limit: 7 }).then(({ data }) => {
-      if (alive) setPresets(data || [])
-    })
-    return () => { alive = false }
-  }, [])
 
   function chooseShift(value) {
     setShiftId(value)
@@ -94,10 +78,7 @@ export default function NewTicketModal({ masters, suggestions, operatorId, onClo
     <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
       <section className="modal-card composer-modal">
         <header className="modal-header composer-header">
-          <div>
-            <h2>Quick Ticket Composer</h2>
-            <div className="modal-live-time">{jakartaDateTimeLabel(now)} WIB</div>
-          </div>
+          <h2>Quick Ticket Composer</h2>
           <button className="icon-button" onClick={onClose}><X size={19} /></button>
         </header>
 
@@ -112,13 +93,14 @@ export default function NewTicketModal({ masters, suggestions, operatorId, onClo
                 <label className="composer-description">Issue Description<HybridLookup value={description} onChange={setDescription} suggestions={suggestions.issueDescriptions} placeholder="Search description or type a new one…" /></label>
               </div>
 
-              {!!presets.length && (
+              {!!masters.presets.length && (
                 <div className="composer-presets">
                   <div className="preset-label"><Sparkles size={14} /> Common presets</div>
                   <div className="preset-list">
-                    {presets.map((preset, index) => (
-                      <button type="button" key={`${preset.issue_type_id}-${preset.issue_description}-${index}`} onClick={() => applyPreset(preset)} title={preset.issue_description || ''}>
-                        <strong>{preset.issue_name}</strong><span>{preset.issue_description}</span>
+                    {masters.presets.map((preset) => (
+                      <button type="button" key={preset.preset_id} onClick={() => applyPreset(preset)} title={preset.issue_description || preset.issue_name}>
+                        <strong>{preset.preset_name}</strong>
+                        <span>{preset.issue_name}{preset.issue_description ? ` · ${preset.issue_description}` : ''}</span>
                       </button>
                     ))}
                   </div>
